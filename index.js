@@ -1,3 +1,4 @@
+
 class List {
   constructor (head, tail) {
     this.head = head
@@ -52,22 +53,31 @@ class Heap {
 
 const EmptyHeap = new Heap()
 
+// mergePairs returns a promise to the heap resulting from
+// doing mergePairs on the list. The merged result is gathered
+// recursively, but each recursive step goes through setImmediate
+// to keep the overall process from smashing the stack or stealing
+// large amounts of time from the event loop.
 function mergePairs (list, comparitor) {
-  let result = EmptyHeap
+  return new Promise((resolve, reject) => setImmediate(() => {
+    let a = EmptyHeap
 
-  let l = list
-  while (!l.isEmpty) {
-    let a = l.head
-    l = l.tail
+    let l = list
     if (!l.isEmpty) {
-      const b = l.head
+      a = l.head
       l = l.tail
-      a = a.merge(b, comparitor)
+      if (!l.isEmpty) {
+        a = a.merge(l.head, comparitor)
+        l = l.tail
+      }
     }
-    result = result.merge(a, comparitor)
-  }
 
-  return result
+    if (l.isEmpty) {
+      resolve(a)
+    } else {
+      resolve(mergePairs(l).then(b => a.merge(b, comparitor)))
+    }
+  }))
 }
 
 class PairingHeap {
@@ -75,6 +85,8 @@ class PairingHeap {
     this.comparitor = comparitor || ((a, b) => (a > b) - (b > a))
     this.size = 0
     this.heap = EmptyHeap
+    this.busy = false
+    this.notifier = null
   }
 
   get length () {
@@ -85,32 +97,68 @@ class PairingHeap {
     return this.size === 0
   }
 
+  waitForNotBusy () {
+    if (this.busy) {
+      if (!this.notifier) {
+        this.notifier = new Promise((resolve, reject) => {
+          const checkBusy = () => {
+            if (this.busy) {
+              setImmediate(checkBusy)
+            } else {
+              this.notifier = null
+              resolve()
+            }
+          }
+
+          checkBusy()
+        })
+      }
+      return this.notifier
+    } else {
+      return Promise.resolve(this)
+    }
+  }
+
   insert (item) {
     if (typeof item === 'undefined') {
       throw Error('empty insert')
     }
 
-    this.size += 1
-    this.heap = this.heap.merge(new Heap(item), this.comparitor)
+    const insertItem = (item) => {
+      this.size += 1
+      this.heap = this.heap.merge(new Heap(item), this.comparitor)
+      return this
+    }
+
+    if (this.busy) {
+      return this.waitForNotBusy().then(() => insertItem(item))
+    } else {
+      return Promise.resolve(insertItem(item))
+    }
   }
 
   peek () {
-    if (this.isEmpty) {
-      throw Error('heap empty')
-    }
+    return this.waitForNotBusy().then(() => {
+      if (this.isEmpty) {
+        throw Error('heap empty')
+      }
 
-    return this.heap.getMin()
+      return this.heap.getMin()
+    })
   }
 
   pop () {
-    if (this.isEmpty) {
-      throw Error('heap empty')
-    }
-
-    const result = this.heap.getMin()
-    this.heap = this.heap.pop(this.comparitor)
-    this.size -= 1
-    return result
+    return this.waitForNotBusy().then(async () => {
+      if (this.isEmpty) {
+        throw Error('heap empty')
+      }
+      this.busy = true
+      const result = this.heap.getMin()
+      this.heap = await this.heap.pop(this.comparitor)
+      this.size -= 1
+      this.busy = false
+      return result
+    })
   }
 }
 
