@@ -75,7 +75,7 @@ function mergePairs (list, comparitor) {
     if (l.isEmpty) {
       resolve(a)
     } else {
-      resolve(mergePairs(l).then(b => a.merge(b, comparitor)))
+      resolve(mergePairs(l, comparitor).then(b => a.merge(b, comparitor)))
     }
   }))
 }
@@ -148,7 +148,7 @@ class PairingHeap {
   }
 
   pop () {
-    return this.waitForNotBusy().then(async () => {
+    const popFunc = async () => {
       if (this.isEmpty) {
         throw Error('heap empty')
       }
@@ -157,8 +157,14 @@ class PairingHeap {
       this.heap = await this.heap.pop(this.comparitor)
       this.size -= 1
       this.busy = false
-      return result
-    })
+      return result      
+    }
+
+    if (!this.busy) {
+      return popFunc()
+    } else {
+      return this.waitForNotBusy().then(popFunc)
+    }
   }
 }
 
