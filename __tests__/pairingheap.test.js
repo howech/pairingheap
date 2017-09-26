@@ -61,10 +61,10 @@ const size = 10000
 it('sorts when inserts are in order', async () => {
   const p = new PairingHeap()
 
-  for (let i = 0; i < size-1; i += 1) {
+  for (let i = 0; i < size - 1; i += 1) {
     p.insert(i)
   }
-  await p.insert(size-1)
+  await p.insert(size - 1)
 
   expect(p.length).toBe(size)
 

@@ -53,7 +53,6 @@ class Heap {
 
 const EmptyHeap = new Heap()
 
-
 // mergePairs returns a promise to the heap resulting from
 // doing mergePairs on the list. The merged result is gathered
 // recursively, but each recursive step goes through setImmediate
@@ -65,8 +64,8 @@ function mergePairs (list, comparitor) {
     let b = EmptyHeap
     let l = list
     let n = 32
-    
-    while(!l.isEmpty && n > 0) {
+
+    while (!l.isEmpty && n > 0) {
       a = l.head
       l = l.tail
       if (!l.isEmpty) {
@@ -76,7 +75,7 @@ function mergePairs (list, comparitor) {
       b = b.merge(a, comparitor)
       n -= 1
     }
-    
+
     if (l.isEmpty) {
       resolve(b)
     } else {
@@ -162,7 +161,7 @@ class PairingHeap {
       this.heap = await this.heap.pop(this.comparitor)
       this.size -= 1
       this.busy = false
-      return result      
+      return result
     }
 
     if (!this.busy) {
