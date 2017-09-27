@@ -110,3 +110,37 @@ it('behaves reasonably with a million inserts', () => {
   })
   return r2
 })
+
+
+it('correctly orders inserts and removals', () => {
+  const p = new PairingHeap()
+
+  for (let i = 0; i < 100; i += 1) {
+    p.insert(i*10)
+  }
+
+  p.pop().then(x => {
+    expect(x).toBe(0)
+  })
+  expect(p.busy).toBeTruthy()
+  for (let i = 0; i < 100; i += 1) {
+    p.insert(i*10+1)
+  }
+  const z = p.pop().then(x => {
+    expect(x).toBe(1)
+    for (let i = 0; i < 100; i += 1) {
+      p.insert(i*10+3)
+    }
+    expect(x).toBe(2)
+  })
+
+  for (let i = 0; i < 100; i += 1) {
+    p.insert(i*10+2)
+  }
+  return p.pop().then(y => {
+    expect(y).toBe(1)
+  })
+
+  return z
+})
+

@@ -27,5 +27,8 @@
   },
   "dependencies": {
     "ephemeris-moshier": "0.0.2-dev"
+  },
+  "jest": {
+    "testPathIgnorePatterns": ["<rootDir>/.c9","node_modules"]
   }
 }
