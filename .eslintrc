@@ -15,5 +15,6 @@
     },
     "globals": {"expect": {}, 
                 "jasmine": {},
-                "it": {}}
+                "it": {},
+                "setImmediate": {}}
 }

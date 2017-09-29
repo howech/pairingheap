@@ -1,12 +1,12 @@
 
 class List {
   constructor (head, tail) {
-    this.head = head
-    this.tail = tail
-  }
-
-  get isEmpty () {
-    return (!this.head && !this.tail) || (typeof this.head === 'undefined')
+    if (typeof head === 'undefined' && typeof tail === 'undefined') {
+      this.isEmpty = true
+    } else {
+      this.head = head
+      this.tail = tail
+    }
   }
 
   prepend (head) {
@@ -14,11 +14,15 @@ class List {
   }
 }
 
+const EmptyList = new List()
+
+// This class is a bare bones implementation of an immutable pairs heap with 
+// external mergepairs and comparator operations. 
 class Heap {
   constructor (item, children) {
     if (item || typeof item !== 'undefined') {
       this.item = item
-      this.children = children || new List()
+      this.children = children || EmptyList
     }
   }
 
@@ -58,13 +62,17 @@ const EmptyHeap = new Heap()
 // recursively, but each recursive step goes through setImmediate
 // to keep the overall process from smashing the stack or stealing
 // large amounts of time from the event loop.
-function mergePairs (list, comparitor) {
+
+const WORK_UNIT_SIZE = 32
+
+function mergePairs (list, comparitor, previousResult) {
   return new Promise((resolve, reject) => setImmediate(() => {
     let a = EmptyHeap
     let b = EmptyHeap
     let l = list
-    let n = 32
+    let n = WORK_UNIT_SIZE
 
+    // Loop throug up to WORK_UNIT_SIZE pairs of entries in the list
     while (!l.isEmpty && n > 0) {
       a = l.head
       l = l.tail
@@ -75,11 +83,13 @@ function mergePairs (list, comparitor) {
       b = b.merge(a, comparitor)
       n -= 1
     }
-
+    if (previousResult) {
+      b = previousResult.merge(b, comparitor)
+    }
     if (l.isEmpty) {
       resolve(b)
     } else {
-      resolve(mergePairs(l, comparitor).then(c => b.merge(c, comparitor)))
+      resolve(mergePairs(l, comparitor, b))
     }
   }))
 }
@@ -101,7 +111,7 @@ class PairingHeap {
     return this.size === 0
   }
 
-  waitForNotBusy () {
+  waitForNotBusy (cb) {
     if (this.busy) {
       if (!this.notifier) {
         this.notifier = new Promise((resolve, reject) => {
@@ -110,6 +120,7 @@ class PairingHeap {
               setImmediate(checkBusy)
             } else {
               this.notifier = null
+              cb()
               resolve()
             }
           }
@@ -117,9 +128,9 @@ class PairingHeap {
           checkBusy()
         })
       }
-      return this.notifier
+      return this.notifier.then(cb)
     } else {
-      return Promise.resolve(this)
+      return Promise.resolve(this).then(cb)
     }
   }
 
@@ -135,14 +146,14 @@ class PairingHeap {
     }
 
     if (this.busy) {
-      return this.waitForNotBusy().then(() => insertItem(item))
+      return this.waitForNotBusy(() => insertItem(item))
     } else {
       return Promise.resolve(insertItem(item))
     }
   }
 
   peek () {
-    return this.waitForNotBusy().then(() => {
+    return this.waitForNotBusy(() => {
       if (this.isEmpty) {
         throw Error('heap empty')
       }
@@ -167,7 +178,7 @@ class PairingHeap {
     if (!this.busy) {
       return popFunc()
     } else {
-      return this.waitForNotBusy().then(popFunc)
+      return this.waitForNotBusy(popFunc)
     }
   }
 }

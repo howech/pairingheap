@@ -127,20 +127,20 @@ it('correctly orders inserts and removals', () => {
     p.insert(i*10+1)
   }
   const z = p.pop().then(x => {
-    expect(x).toBe(1)
     for (let i = 0; i < 100; i += 1) {
       p.insert(i*10+3)
     }
-    expect(x).toBe(2)
+    expect(x).toBe(1)
+    p.pop().then(x=>expect(x).toBe(3))
   })
 
   for (let i = 0; i < 100; i += 1) {
     p.insert(i*10+2)
   }
-  return p.pop().then(y => {
+  const q = p.pop().then(y => {
     expect(y).toBe(1)
   })
 
-  return z
+  return Promise.all([z,q])
 })
 
